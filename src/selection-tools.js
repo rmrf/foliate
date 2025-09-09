@@ -3,6 +3,7 @@ import Gio from 'gi://Gio'
 import GObject from 'gi://GObject'
 import WebKit from 'gi://WebKit'
 import Gdk from 'gi://Gdk'
+import Soup from 'gi://Soup?version=3.0'
 import { gettext as _ } from 'gettext'
 
 import * as utils from './utils.js'
@@ -80,6 +81,7 @@ const SelectionToolPopover = GObject.registerClass({
         'translate-target-language': 'string',
     }),
 }, class extends Gtk.Popover {
+    #session = new Soup.Session()
     #webView = utils.connect(new WebView({
         settings: new WebKit.Settings({
             enable_write_console_messages_to_stdout: true,
@@ -116,6 +118,11 @@ const SelectionToolPopover = GObject.registerClass({
             if (payload.key === 'translate-target-language')
                 this.translate_target_language = payload.value
         })
+        this.#webView.provide('fetch', async url => {
+            const msg = Soup.Message.new('GET', url)
+            const bytes = await this.#session.send_and_read_async(msg, null)
+            return bytes.get_data().toString()
+        })()
     }
     loadTool(tool, init) {
         this.#webView.loadURI(tool.uri)

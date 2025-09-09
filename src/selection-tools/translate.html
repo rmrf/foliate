@@ -94,10 +94,10 @@ dialog {
 <script src="../common/widgets.js" type="module"></script>
 <script>
 const googleTranslate = (text, lang) =>
-    fetch('https://translate.googleapis.com/translate_a/single?client=gtx'
+    globalThis.fetch('https://translate.googleapis.com/translate_a/single?client=gtx'
     + '&ie=UTF-8&oe=UTF-&sl=auto&tl=' + lang
     + '&dt=t&q=' + text)
-        .then(res => res.ok ? res.json() : Promise.reject(new Error()))
+        .then(JSON.parse)
         .then(json => json[0].map(x => x[0]).join(''))
 
 const manageFocus = items => {
