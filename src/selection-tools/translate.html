@@ -100,6 +100,21 @@ const googleTranslate = (text, lang) =>
         .then(res => res.ok ? res.json() : Promise.reject(new Error()))
         .then(json => json[0].map(x => x[0]).join(''))
 
+const libreTranslate = (url, text, lang) =>
+    fetch(`${url}/translate`, {
+        method: 'POST',
+        body: new URLSearchParams({
+            q: text,
+            source: 'auto',
+            target: lang,
+        }),
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    })
+        .then(res => res.ok ? res.json() : Promise.reject(new Error()))
+        .then(json => json.translatedText)
+
 const manageFocus = items => {
     const setFocusPrev = el =>
         setFocusNext(el, items.slice(0).reverse())
@@ -174,18 +189,36 @@ document.querySelector('input').addEventListener('input', e => {
     }
 })
 
-let msgError
-const translate = (text, lang) => googleTranslate(text, lang)
-    .then(result => document.querySelector('#output').innerText = result)
-    .catch(e => {
-        console.error(e)
-        document.querySelector('#output').innerText = msgError
-    })
+let msgError, url, provider
+const translate = (text, lang) => {
+    const promise = provider === 'google'
+        ? googleTranslate(text, lang)
+        : libreTranslate(url, text, lang)
+    return promise
+        .then(result => document.querySelector('#output').innerText = result)
+        .catch(e => {
+            console.error(e)
+            document.querySelector('#output').innerText = msgError
+        })
+}
+
 
 globalThis.init = ({ msg, text, lang }) => {
     msgError = msg.error
+    url = msg.url
+    provider = msg.provider
     document.querySelector('footer').textContent = msg.footer
     document.querySelector('input').placeholder = msg.search
+
+    if (msg.description) {
+        document.querySelector('#output').innerHTML = `
+            <b>${msg.error}</b>
+            <p>${msg.description}</p>
+        `
+        return
+    }
+
+    if (!msg.langs) return
 
     const options = msg.langs.map(([code, label]) => {
         const option = document.createElement('button')

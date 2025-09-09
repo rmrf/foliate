@@ -28,6 +28,19 @@ const getGoogleTranslateLanguages = utils.memoize(() => {
     return [langs.map(lang => [lang, displayName.of(lang)]), defaultLang]
 })
 
+const getLibreTranslateLanguages = utils.memoize(url => {
+    const displayName = new Intl.DisplayNames(locales, { type: 'language' })
+    return fetch(`${url}/languages`)
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch languages')))
+        .then(json => json.map(lang => [lang.code, displayName.of(lang.code)]))
+        .catch(e => {
+            console.error(e)
+            // Fallback to a small list of common languages
+            const langs = ['en', 'es', 'fr', 'de', 'zh', 'ru']
+            return langs.map(lang => [lang, displayName.of(lang)])
+        })
+})
+
 const tools = {
     'dictionary': {
         label: _('Dictionary'),
@@ -58,17 +71,38 @@ const tools = {
     'translate': {
         label: _('Translate'),
         uri: 'foliate-selection-tool:///selection-tools/translate.html',
-        run: (popover, { text }) => {
-            const [langs, defaultLang] = getGoogleTranslateLanguages()
+        run: async (popover, { text }) => {
+            const settings = utils.settings('viewer')
+            const provider = settings.get_string('translation-provider')
+            const url = settings.get_string('libretranslate-url')
+
+            if (provider === 'libretranslate' && !url) {
+                return {
+                    msg: {
+                        error: _('LibreTranslate URL not set'),
+                        description: _('Please set a URL for LibreTranslate in the preferences.'),
+                    },
+                }
+            }
+
+            const [langs, defaultLang, footer] = provider === 'google'
+                ? [...getGoogleTranslateLanguages(), _('Translation by Google Translate')]
+                : [await getLibreTranslateLanguages(url), 'en', _('Translation by LibreTranslate')]
+
+            const langCodes = langs.map(l => l[0])
+            const finalDefaultLang = matchLocales(langCodes)[0] ?? defaultLang
+
             return {
                 msg: {
-                    footer: _('Translation by Google Translate'),
+                    footer,
                     error: _('Cannot retrieve translation'),
                     search: _('Search…'),
                     langs,
+                    provider,
+                    url,
                 },
                 text,
-                lang: popover.translate_target_language || defaultLang,
+                lang: popover.translate_target_language || finalDefaultLang,
             }
         },
     },

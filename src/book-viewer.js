@@ -88,6 +88,8 @@ const ViewPreferencesWindow = GObject.registerClass({
         'max-inline-size', 'max-block-size', 'max-column-count',
         'theme-flow-box',
         'reduce-animation',
+        'translation-provider',
+        'libretranslate-url',
     ],
 }, class extends Adw.PreferencesDialog {
     constructor(params) {
@@ -111,6 +113,25 @@ const ViewPreferencesWindow = GObject.registerClass({
             'animated': [this._reduce_animation, 'active', true],
             'override-font': [this._override_font, 'active'],
         })
+
+        const settings = utils.settings()
+        const providers = ['google', 'libretranslate']
+        this._translation_provider.model = new Gtk.StringList({
+            strings: providers.map(p => p.charAt(0).toUpperCase() + p.slice(1)),
+        })
+        settings.bind('translation-provider', this._translation_provider, 'selected',
+            Gio.SettingsBindFlags.DEFAULT,
+            (val) => [true, providers.indexOf(val)],
+            (val) => [true, providers[val]],
+        )
+        settings.bind('libretranslate-url', this._libretranslate_url, 'text',
+            Gio.SettingsBindFlags.DEFAULT)
+
+        const setUrlVisibility = () => {
+            this._libretranslate_url.visible = settings.get_string('translation-provider') === 'libretranslate'
+        }
+        settings.connect('changed::translation-provider', setUrlVisibility)
+        setUrlVisibility()
 
         const actionGroup = utils.addPropertyActions(this.viewSettings, ['theme'])
         this.insert_action_group('view-settings', actionGroup)
