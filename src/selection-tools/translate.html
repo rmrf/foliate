@@ -190,10 +190,28 @@ const translate = (text, lang) => libreTranslate(text, lang)
         document.querySelector('#output').innerText = msgError
     })
 
-globalThis.init = ({ msg, text, lang }) => {
+globalThis.init = ({ msg, text, lang, libretranslateUrl }) => {
     msgError = msg.error
     document.querySelector('footer').textContent = msg.footer
     document.querySelector('input').placeholder = msg.search
+
+    // Update the libreTranslate function to use the configured URL
+    if (libretranslateUrl) {
+        window.libreTranslate = (text, lang) =>
+            fetch(`${libretranslateUrl}/translate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    q: text,
+                    source: 'auto',
+                    target: lang,
+                }),
+            })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error()))
+                .then(json => json.translatedText)
+    }
 
     const options = msg.langs.map(([code, label]) => {
         const option = document.createElement('button')

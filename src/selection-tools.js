@@ -3,6 +3,7 @@ import Gio from 'gi://Gio'
 import GObject from 'gi://GObject'
 import WebKit from 'gi://WebKit'
 import Gdk from 'gi://Gdk'
+import GLib from 'gi://GLib'
 import { gettext as _ } from 'gettext'
 
 import * as utils from './utils.js'
@@ -67,6 +68,7 @@ const tools = {
                 },
                 text,
                 lang: popover.translate_target_language || defaultLang,
+                libretranslateUrl: popover.libretranslate_url,
             }
         },
     },
@@ -76,6 +78,7 @@ const SelectionToolPopover = GObject.registerClass({
     GTypeName: 'FoliateSelectionToolPopover',
     Properties: utils.makeParams({
         'translate-target-language': 'string',
+        'libretranslate-url': 'string',
     }),
 }, class extends Gtk.Popover {
     #webView = utils.connect(new WebView({
@@ -103,7 +106,14 @@ const SelectionToolPopover = GObject.registerClass({
     })
     constructor(params) {
         super(params)
-        utils.bindSettings('viewer', this, ['translate-target-language'])
+        utils.bindSettings('viewer', this, ['translate-target-language', 'libretranslate-url'])
+
+        // Support environment variable override for libretranslate URL
+        const envUrl = GLib.getenv('FOLIATE_LIBRETRANSLATE_URL')
+        if (envUrl && !this.libretranslate_url) {
+            this.libretranslate_url = envUrl
+        }
+
         Object.assign(this, {
             width_request: 300,
             height_request: 300,
@@ -113,6 +123,8 @@ const SelectionToolPopover = GObject.registerClass({
         this.#webView.registerHandler('settings', payload => {
             if (payload.key === 'translate-target-language')
                 this.translate_target_language = payload.value
+            else if (payload.key === 'libretranslate-url')
+                this.libretranslate_url = payload.value
         })
     }
     loadTool(tool, init) {
