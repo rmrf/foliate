@@ -93,12 +93,20 @@ dialog {
 </dialog>
 <script src="../common/widgets.js" type="module"></script>
 <script>
-const googleTranslate = (text, lang) =>
-    fetch('https://translate.googleapis.com/translate_a/single?client=gtx'
-    + '&ie=UTF-8&oe=UTF-&sl=auto&tl=' + lang
-    + '&dt=t&q=' + text)
+const libreTranslate = (text, lang) =>
+    fetch('http://100.117.182.52:5000/translate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            q: text,
+            source: 'auto',
+            target: lang,
+        }),
+    })
         .then(res => res.ok ? res.json() : Promise.reject(new Error()))
-        .then(json => json[0].map(x => x[0]).join(''))
+        .then(json => json.translatedText)
 
 const manageFocus = items => {
     const setFocusPrev = el =>
@@ -175,7 +183,7 @@ document.querySelector('input').addEventListener('input', e => {
 })
 
 let msgError
-const translate = (text, lang) => googleTranslate(text, lang)
+const translate = (text, lang) => libreTranslate(text, lang)
     .then(result => document.querySelector('#output').innerText = result)
     .catch(e => {
         console.error(e)
